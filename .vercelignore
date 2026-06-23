@@ -1,0 +1,11 @@
+node_modules
+package.json
+package-lock.json
+serve.mjs
+screenshot.mjs
+temporary screenshots
+brand assets
+vorher-nachher
+*.psd
+CLAUDE.md
+.gitignore
