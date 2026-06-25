@@ -220,6 +220,10 @@
                    class="w-full bg-transparent text-[16px] font-medium text-ink placeholder:text-muted/70"
                    placeholder="Wohin schicken wir die Analyse? (E-Mail)" aria-label="Ihre E-Mail-Adresse" />
           </div>
+          <label class="mt-2.5 flex items-start gap-2.5 px-2 text-left text-[13px] leading-snug text-muted">
+            <input id="consentInput" type="checkbox" name="consent" class="mt-0.5 h-4 w-4 shrink-0 accent-blue" />
+            <span>Ich bin damit einverstanden, dass meine Angaben zur Bearbeitung meiner Anfrage verarbeitet werden. Es gilt die <a href="datenschutz.html" target="_blank" rel="noopener" class="font-medium text-ink underline underline-offset-2 hover:text-blue">Datenschutzerklärung</a>.</span>
+          </label>
           <p id="formError" class="hidden px-2 pt-2 text-sm font-medium text-danger"></p>
         </form>
 
@@ -734,15 +738,23 @@
       <h2 data-t="cta.titel" class="tighter text-3xl font-extrabold leading-[1.08] sm:text-5xl">Sehen Sie kostenlos, was Ihre Website besser kann.</h2>
       <p data-t="cta.text" class="mx-auto mt-4 max-w-xl text-lg leading-relaxed text-white/65">Adresse eintragen, Analyse in 24&nbsp;Stunden erhalten: Ampel-Bewertung, 3 Schwachstellen und ein faires Angebot. Ohne Risiko.</p>
 
-      <form id="checkForm2" novalidate class="mx-auto mt-9 flex max-w-xl flex-col gap-2.5 sm:flex-row">
-        <input name="website" inputmode="url" required placeholder="ihr-betrieb.de"
-               class="field w-full rounded-xl border border-white/15 bg-white px-4 py-3.5 text-[16px] font-medium text-ink placeholder:text-muted/70" aria-label="Ihre Website-Adresse" />
-        <button type="submit" class="btn-primary inline-flex shrink-0 items-center justify-center gap-2 rounded-xl px-6 py-3.5 text-[15px] font-semibold shadow-cta">
+      <form id="checkForm2" novalidate class="mx-auto mt-9 max-w-xl">
+        <div class="flex flex-col gap-2.5 sm:flex-row">
+          <input name="website" inputmode="url" required placeholder="ihr-betrieb.de"
+                 class="field w-full rounded-xl border border-white/15 bg-white px-4 py-3.5 text-[16px] font-medium text-ink placeholder:text-muted/70" aria-label="Ihre Website-Adresse" />
+          <input name="email" type="email" autocomplete="email" required placeholder="Ihre E-Mail-Adresse"
+                 class="field w-full rounded-xl border border-white/15 bg-white px-4 py-3.5 text-[16px] font-medium text-ink placeholder:text-muted/70" aria-label="Ihre E-Mail-Adresse" />
+        </div>
+        <button type="submit" class="btn-primary mt-2.5 inline-flex w-full items-center justify-center gap-2 rounded-xl px-6 py-3.5 text-[15px] font-semibold shadow-cta sm:w-auto">
           Check anfordern
           <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
         </button>
+        <label class="mt-3 flex items-start gap-2.5 text-left text-[13px] leading-snug text-white/70">
+          <input id="consentInput2" type="checkbox" name="consent" class="mt-0.5 h-4 w-4 shrink-0 accent-blue" />
+          <span>Ich bin damit einverstanden, dass meine Angaben zur Bearbeitung meiner Anfrage verarbeitet werden. Es gilt die <a href="datenschutz.html" target="_blank" rel="noopener" class="font-medium text-white underline underline-offset-2 hover:text-blue">Datenschutzerklärung</a>.</span>
+        </label>
+        <p id="formError2" class="mt-2 hidden text-left text-sm font-medium text-blue"></p>
       </form>
-      <p id="formError2" class="mt-3 hidden text-sm font-medium text-blue"></p>
       <p class="mt-4 text-[13.5px] text-white/50">Kostenlos · Unverbindlich · Ihre Daten werden vertraulich behandelt</p>
     </div>
   </div>
@@ -821,21 +833,59 @@
   }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
   document.querySelectorAll('.reveal').forEach(el => io.observe(el));
 
-  // ---- form handling (no backend: graceful success state) ----
+  // ---- HubSpot Forms API ----
+  const HUBSPOT = {
+    portalId: '146150011',
+    formGuid: '8f1b286f-ba30-4502-87fe-3c6f8d4e3f8b',
+    endpoint: 'https://api.hsforms.com/submissions/v3/integration/submit',
+  };
+  const CONSENT_TEXT = 'Ich bin damit einverstanden, dass meine Angaben zur Bearbeitung meiner Anfrage verarbeitet werden. Es gilt die Datenschutzerklärung.';
+
+  async function sendToHubspot(website, email) {
+    const res = await fetch(`${HUBSPOT.endpoint}/${HUBSPOT.portalId}/${HUBSPOT.formGuid}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fields: [
+          { name: 'email', value: email },
+          { name: '0-2/website', value: website },
+        ],
+        context: { pageUri: location.href, pageName: document.title },
+        legalConsentOptions: { consent: { consentToProcess: true, text: CONSENT_TEXT } },
+      }),
+    });
+    if (!res.ok) throw new Error('HubSpot ' + res.status);
+    return true;
+  }
+
+  function setSending(btn, on) {
+    if (!btn) return;
+    if (on) { btn.dataset.html = btn.innerHTML; btn.disabled = true; btn.style.opacity = '0.7'; btn.style.pointerEvents = 'none'; btn.textContent = 'Wird gesendet …'; }
+    else { btn.disabled = false; btn.style.opacity = ''; btn.style.pointerEvents = ''; if (btn.dataset.html) btn.innerHTML = btn.dataset.html; }
+  }
+
+  // ---- form handling ----
   function normalizeUrl(v){ return (v||'').trim().replace(/^https?:\/\//i,'').replace(/\/+$/,''); }
   function looksLikeDomain(v){ return /^([a-z0-9-]+\.)+[a-z]{2,}(\/.*)?$/i.test(normalizeUrl(v)); }
   function looksLikeEmail(v){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((v||'').trim()); }
 
   const form = document.getElementById('checkForm');
   const errEl = document.getElementById('formError');
-  form?.addEventListener('submit', (ev) => {
+  form?.addEventListener('submit', async (ev) => {
     ev.preventDefault();
     const site = document.getElementById('siteInput');
     const mail = document.getElementById('emailInput');
+    const consent = document.getElementById('consentInput');
+    const btn = form.querySelector('button[type="submit"]');
     errEl.classList.add('hidden');
     if (!looksLikeDomain(site.value)) { showErr(errEl, 'Bitte geben Sie eine gültige Website-Adresse ein, z. B. ihr-betrieb.de'); site.focus(); return; }
     if (!looksLikeEmail(mail.value)) { showErr(errEl, 'Bitte geben Sie eine gültige E-Mail-Adresse ein, damit wir Ihnen die Analyse schicken können.'); mail.focus(); return; }
+    if (!consent.checked) { showErr(errEl, 'Bitte stimmen Sie der Datenschutzerklärung zu, damit wir Ihre Anfrage bearbeiten dürfen.'); consent.focus(); return; }
     const domain = normalizeUrl(site.value);
+    const email = mail.value.trim();
+    setSending(btn, true);
+    try { await sendToHubspot(domain, email); }
+    catch (e) { setSending(btn, false); showErr(errEl, 'Senden hat gerade nicht geklappt. Bitte versuchen Sie es erneut oder schreiben Sie an info@gsi-software.com.'); return; }
     form.innerHTML = `
       <div class="flex items-start gap-4 p-5">
         <span class="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-good/12 text-good">
@@ -843,27 +893,35 @@
         </span>
         <div>
           <div class="font-display text-xl font-bold tight">Geschafft! Ihr Check ist angefordert.</div>
-          <p class="mt-1.5 leading-relaxed text-muted">Wir prüfen <strong class="text-ink">${domain}</strong> und schicken Ihre Ein-Seiten-Analyse innerhalb von 24&nbsp;Stunden an <strong class="text-ink">${mail.value.trim()}</strong>.</p>
+          <p class="mt-1.5 leading-relaxed text-muted">Wir prüfen <strong class="text-ink">${domain}</strong> und schicken Ihre Ein-Seiten-Analyse innerhalb von 24&nbsp;Stunden an <strong class="text-ink">${email}</strong>.</p>
         </div>
       </div>`;
   });
 
   const form2 = document.getElementById('checkForm2');
   const errEl2 = document.getElementById('formError2');
-  form2?.addEventListener('submit', (ev) => {
+  form2?.addEventListener('submit', async (ev) => {
     ev.preventDefault();
     const site = form2.querySelector('input[name="website"]');
+    const mail = form2.querySelector('input[name="email"]');
+    const consent = document.getElementById('consentInput2');
+    const btn = form2.querySelector('button[type="submit"]');
     errEl2.classList.add('hidden');
     if (!looksLikeDomain(site.value)) { showErr(errEl2, 'Bitte geben Sie eine gültige Website-Adresse ein, z. B. ihr-betrieb.de'); site.focus(); return; }
+    if (!looksLikeEmail(mail.value)) { showErr(errEl2, 'Bitte geben Sie eine gültige E-Mail-Adresse ein, damit wir Ihnen die Analyse schicken können.'); mail.focus(); return; }
+    if (!consent.checked) { showErr(errEl2, 'Bitte stimmen Sie der Datenschutzerklärung zu, damit wir Ihre Anfrage bearbeiten dürfen.'); consent.focus(); return; }
     const domain = normalizeUrl(site.value);
-    form2.outerHTML = `
-      <div class="mx-auto mt-9 flex max-w-xl items-center justify-center gap-3 rounded-xl bg-white px-5 py-4 text-left">
-        <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-good/15 text-good">
+    const email = mail.value.trim();
+    setSending(btn, true);
+    try { await sendToHubspot(domain, email); }
+    catch (e) { setSending(btn, false); showErr(errEl2, 'Senden hat gerade nicht geklappt. Bitte versuchen Sie es erneut oder schreiben Sie an info@gsi-software.com.'); return; }
+    form2.innerHTML = `
+      <div class="mx-auto flex max-w-xl items-start gap-3 rounded-xl bg-white px-5 py-4 text-left">
+        <span class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-good/15 text-good">
           <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m5 13 4 4L19 7"/></svg>
         </span>
-        <p class="text-[15px] font-medium text-ink">Danke! Wir prüfen <strong>${domain}</strong>. Bitte ergänzen Sie oben noch Ihre E-Mail, damit wir die Analyse senden können.</p>
+        <p class="text-[15px] font-medium text-ink">Geschafft! Wir prüfen <strong>${domain}</strong> und schicken Ihre Analyse innerhalb von 24&nbsp;Stunden an <strong>${email}</strong>.</p>
       </div>`;
-    document.getElementById('check')?.scrollIntoView({ behavior:'smooth', block:'center' });
   });
 
   function showErr(el, msg){ el.textContent = msg; el.classList.remove('hidden'); }
