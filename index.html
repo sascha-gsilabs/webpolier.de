@@ -894,6 +894,12 @@
     else { btn.disabled = false; btn.style.opacity = ''; btn.style.pointerEvents = ''; if (btn.dataset.html) btn.innerHTML = btn.dataset.html; }
   }
 
+  // ---- Google Ads Conversion (nur bei Einwilligung wirksam via Consent Mode) ----
+  function trackConversion(){
+    if (typeof gtag !== 'function') return;
+    gtag('event', 'ads_conversion_Book_appointment_1', { 'event_timeout': 2000 });
+  }
+
   // ---- form handling ----
   function normalizeUrl(v){ return (v||'').trim().replace(/^https?:\/\//i,'').replace(/\/+$/,''); }
   function looksLikeDomain(v){ return /^([a-z0-9-]+\.)+[a-z]{2,}(\/.*)?$/i.test(normalizeUrl(v)); }
@@ -916,6 +922,7 @@
     setSending(btn, true);
     try { await sendToHubspot(domain, email); }
     catch (e) { setSending(btn, false); showErr(errEl, 'Senden hat gerade nicht geklappt. Bitte versuchen Sie es erneut oder schreiben Sie an info@gsi-software.com.'); return; }
+    trackConversion();
     form.innerHTML = `
       <div class="flex items-start gap-4 p-5">
         <span class="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-good/12 text-good">
@@ -945,6 +952,7 @@
     setSending(btn, true);
     try { await sendToHubspot(domain, email); }
     catch (e) { setSending(btn, false); showErr(errEl2, 'Senden hat gerade nicht geklappt. Bitte versuchen Sie es erneut oder schreiben Sie an info@gsi-software.com.'); return; }
+    trackConversion();
     form2.innerHTML = `
       <div class="mx-auto flex max-w-xl items-start gap-3 rounded-xl bg-white px-5 py-4 text-left">
         <span class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-good/15 text-good">
