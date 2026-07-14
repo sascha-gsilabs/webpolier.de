@@ -3,6 +3,20 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+<!-- Google tag (gtag.js) — Consent Mode v2: standardmässig verweigert, erst nach Einwilligung aktiv -->
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('consent', 'default', {
+    'ad_storage': 'denied',
+    'ad_user_data': 'denied',
+    'ad_personalization': 'denied',
+    'analytics_storage': 'denied',
+    'wait_for_update': 500
+  });
+</script>
+
 <title>WebPolier · Kostenloser Website-Check für Handwerksbetriebe</title>
 <meta name="description" content="Mehr Anfragen aus der Region, ohne Aufwand. Kostenlose Website-Analyse vorab, fairer Festpreis, wir übernehmen alles: Texte, Bilder, Technik und Google. Für Handwerksbetriebe." />
 <link rel="icon" href="assets/favicon.svg" />
@@ -1043,17 +1057,34 @@
       o.onload = function(){ if (window.trackingFunctions) window.trackingFunctions.onLoad({ appId: '6a3a8cdc1229b300147d5bc7' }); };
       document.head.appendChild(o);
     }
+    function loadGoogleAds(){
+      if (window.__googleAdsLoaded) return;
+      window.__googleAdsLoaded = true;
+      gtag('consent', 'update', {
+        'ad_storage': 'granted',
+        'ad_user_data': 'granted',
+        'ad_personalization': 'granted',
+        'analytics_storage': 'granted'
+      });
+      var g = document.createElement('script');
+      g.async = true;
+      g.src = 'https://www.googletagmanager.com/gtag/js?id=AW-18322031883';
+      document.head.appendChild(g);
+      gtag('js', new Date());
+      gtag('config', 'AW-18322031883');
+    }
+    function loadTrackers(){ loadApollo(); loadGoogleAds(); }
     function hide(){ if (banner) banner.classList.add('hidden'); }
     function show(){ if (banner) banner.classList.remove('hidden'); }
 
     var choice = null;
     try { choice = localStorage.getItem(KEY); } catch(e){}
-    if (choice === 'accepted') { loadApollo(); }
+    if (choice === 'accepted') { loadTrackers(); }
     else if (choice !== 'declined') { show(); }
 
     document.getElementById('consentAccept') && document.getElementById('consentAccept').addEventListener('click', function(){
       try { localStorage.setItem(KEY, 'accepted'); } catch(e){}
-      hide(); loadApollo();
+      hide(); loadTrackers();
     });
     document.getElementById('consentDecline') && document.getElementById('consentDecline').addEventListener('click', function(){
       try { localStorage.setItem(KEY, 'declined'); } catch(e){}
